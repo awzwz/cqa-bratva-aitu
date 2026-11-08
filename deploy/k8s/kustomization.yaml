@@ -1,0 +1,17 @@
+# DigitalOcean Kubernetes (DOKS): kubectl apply -k deploy/k8s
+# Secrets: copy secret.example.yaml → secret.yaml (gitignored), fill in, kubectl apply -f secret.yaml first.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: cqa
+resources:
+  - namespace.yaml
+  - configmap.yaml
+  - postgres.yaml
+  - redis.yaml
+  - api.yaml
+  - worker.yaml
+  - ingress.yaml
+images:
+  - name: cqa
+    newName: registry.digitalocean.com/bratva-aitu/cqa
+    newTag: latest

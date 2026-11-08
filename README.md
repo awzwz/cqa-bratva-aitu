@@ -90,6 +90,13 @@ make up      # postgres + redis + api + 2 workers
 make obs     # + Prometheus :9090 и Grafana :3000
 ```
 
+В Kubernetes (DigitalOcean DOKS) то же разворачивается манифестами из `deploy/k8s`: API с HPA за ingress-nginx и балансировщиком DigitalOcean, воркеры с HPA или KEDA по длине очереди Redis, PostgreSQL и Redis.
+
+```bash
+cp deploy/k8s/secret.example.yaml deploy/k8s/secret.yaml   # вписать ключи, файл в .gitignore
+kubectl apply -f deploy/k8s/secret.yaml && kubectl apply -k deploy/k8s
+```
+
 Без Redis и PostgreSQL система работает на SQLite с фоновыми заданиями внутри процесса API. Так она запускается на ноутбуке во время контрольного часа.
 
 ## Структура
