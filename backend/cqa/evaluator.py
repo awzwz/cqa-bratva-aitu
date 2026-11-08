@@ -173,7 +173,25 @@ def evaluate_dialog(record: dict, checklist: dict, router: LLMRouter, *, paralle
                                                                          "rows": [{"criterion_id": r.criterion_id, "applicable": r.applicable, "weight": r.weight,
                                                                                    "points": None if r.points is None else float(r.points), "effective_weight": None if r.effective_weight is None else float(r.effective_weight)} for r in score.rows]},
         "facts": facts, "turns": turns, "calls": calls, "second_opinion": second,
-        "model": {"provider": router.primary.id, "name": router.primary.model, "mode": router.primary.mode},
+        "model": _model_used(router, calls),
         "duration_ms": int((time.time() - t0) * 1000), "cost_usd": round(sum(c["cost_usd"] for c in calls), 6),
         "checklist_key": checklist.get("key"), "checklist_version": checklist.get("version", 1),
     }
+
+LOCAL_PROVIDERS = {"rules", "ollama", "lmstudio", "mlx"}
+
+
+def _model_used(router: "LLMRouter", calls: list[dict]) -> dict:
+    """Describe the models that actually produced the verdicts (fallbacks included), not just the configured primary."""
+    used: dict[tuple[str, str], int] = {}
+    for c in calls:
+        if c.get("status") == "second_opinion":
+            continue
+        used[(c["provider"], c["model"])] = used.get((c["provider"], c["model"]), 0) + 1
+    if not used:
+        return {"provider": router.primary.id, "name": router.primary.model, "mode": router.primary.mode, "used": []}
+    rows = [{"provider": p, "model": m, "mode": "local" if p in LOCAL_PROVIDERS else "external_api", "calls": n} for (p, m), n in used.items()]
+    modes = {r["mode"] for r in rows}
+    main = max(rows, key=lambda r: r["calls"])
+    return {"provider": main["provider"], "name": main["model"], "mode": modes.pop() if len(modes) == 1 else "hybrid",
+            "used": rows, "fallback_calls": sum(r["calls"] for r in rows if r["provider"] != router.primary.id)}

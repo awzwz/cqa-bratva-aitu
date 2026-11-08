@@ -43,7 +43,7 @@ def main(argv: list[str] | None = None) -> int:
         for ev in sorted(r["evaluations"], key=lambda e: e["conversation_id"]):
             sc = ev.get("score") or {}
             print(f"{ev['conversation_id']:<12} {ev['status']:<6} {'' if sc.get('final_score') is None else f'{sc['final_score']:>6.2f}'} {'CRIT' if sc.get('critical_flag') else ''} {ev.get('error') or ''}")
-        print(f"ok={r['ok']} error={r['error']} cost=${r['cost_usd']:.3f} time={time.time() - t0:.0f}s")
+        print(f"ok={r['ok']} error={r['error']} cost=${r['cost_usd']:.3f} fallback_calls={r['fallback_calls']} time={time.time() - t0:.0f}s")
     elif a.cmd == "export":
         r = pipeline.export_group(a.group_id, a.target, expected_count=a.expect, checklist_version_id=a.checklist)
         print(json.dumps(r, ensure_ascii=False, indent=2)); return 0 if r["valid"] else 2
@@ -51,7 +51,7 @@ def main(argv: list[str] | None = None) -> int:
         t0 = time.time()
         r = pipeline.ingest(a.group_id, file=a.file); print(f"[{time.time() - t0:5.0f}s] fetched {r['records']} dialogs:", ", ".join(r["ids"]))
         r2 = pipeline.evaluate_group(a.group_id, parallel_dialogs=a.parallel, progress=lambda p: print(f"[{time.time() - t0:5.0f}s] {p['done']}/{p['total']} {p['last']} ${p['cost_usd']:.3f}", flush=True))
-        print(f"[{time.time() - t0:5.0f}s] evaluated ok={r2['ok']} error={r2['error']} cost=${r2['cost_usd']:.3f}")
+        print(f"[{time.time() - t0:5.0f}s] evaluated ok={r2['ok']} error={r2['error']} cost=${r2['cost_usd']:.3f} fallback_calls={r2['fallback_calls']}")
         r3 = pipeline.export_group(a.group_id, "prod", expected_count=a.expect)
         print(f"[{time.time() - t0:5.0f}s] export {r3['path']} valid={r3['valid']}")
         for pr in r3["problems"]:

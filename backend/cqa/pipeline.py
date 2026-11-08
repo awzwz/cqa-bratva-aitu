@@ -45,7 +45,7 @@ def evaluate_group(group_id: str, *, conversation_ids: list[str] | None = None, 
             dialogs = [d for d in dialogs if d.conversation_id not in done]
         items = [(d.id, db.dialog_record(d)) for d in dialogs]
         cl_id = cl.id
-    results = {"group_id": group_id, "checklist_version_id": cl_id, "total": len(items), "ok": 0, "error": 0, "cost_usd": 0.0, "evaluations": []}
+    results = {"group_id": group_id, "checklist_version_id": cl_id, "total": len(items), "ok": 0, "error": 0, "cost_usd": 0.0, "fallback_calls": 0, "evaluations": []}
 
     def work(item):
         dialog_id, rec = item
@@ -67,8 +67,12 @@ def evaluate_group(group_id: str, *, conversation_ids: list[str] | None = None, 
             results["evaluations"].append(res)
             results["ok" if res["status"] == "ok" else "error"] += 1
             results["cost_usd"] += res.get("cost_usd", 0.0)
+            results["fallback_calls"] += (res.get("model") or {}).get("fallback_calls", 0)
             if progress:
                 progress({"done": results["ok"] + results["error"], "total": results["total"], "failed": results["error"], "cost_usd": results["cost_usd"], "last": res["conversation_id"]})
+    if results["fallback_calls"]:
+        log.warning("%d criterion verdicts came from a FALLBACK provider (primary failed: credits, rate limit or network); "
+                    "results.json shows mode/name accordingly. Re-run those dialogs when the primary is back.", results["fallback_calls"])
     return results
 
 
@@ -88,9 +92,12 @@ def export_group(group_id: str, target: str, *, checklist_version_id: int | None
                 evaluations.append({"conversation_id": cid, "status": "error", "error": "not evaluated"}); continue
             evaluations.append({"conversation_id": cid, "status": e.status, "error": e.error, "criteria": e.criteria, "score": e.score})
             if e.model:
-                modes.add(e.model.get("mode", "external_api")); names.add(f"{e.model.get('provider')}/{e.model.get('name')}")
+                for u in (e.model.get("used") or [{"provider": e.model.get("provider"), "model": e.model.get("name"), "mode": e.model.get("mode", "external_api")}]):
+                    modes.add(u["mode"]); names.add(f"{u['provider']}/{u['model']}")
             if e.second_opinion:
                 modes.add("local"); names.update(v.get("model", "") for v in e.second_opinion.values() if isinstance(v, dict) and v.get("model"))
+        if len(modes) > 1:
+            modes = {"hybrid"}
         doc = build_results(evaluations, defs, modes=modes or {"external_api"}, model_name=" + ".join(sorted(n for n in names if n)) or "unknown")
         problems = validate_results(doc, expected_ids=order, expected_count=expected_count, transcripts={cid: len(d.transcript) for cid, d in dialogs.items()})
         path = write_results(doc, target)
