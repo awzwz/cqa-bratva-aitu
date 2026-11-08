@@ -26,14 +26,14 @@ class LLMError(RuntimeError):
 
 # USD per 1M tokens (input, output). Used for the cost ledger; unknown models → 0.
 PRICES: dict[str, tuple[float, float]] = {
-    "gpt-5.5": (5.0, 30.0), "gpt-5.5-mini": (0.25, 2.0), "gpt-5": (1.25, 10.0), "gpt-4.1": (2.0, 8.0), "gpt-4.1-mini": (0.4, 1.6), "gpt-4o": (2.5, 10.0), "gpt-4o-mini": (0.15, 0.6),
+    "gpt-5.5": (5.0, 30.0), "gpt-5.4-mini": (0.75, 4.5), "gpt-5": (1.25, 10.0), "gpt-4.1": (2.0, 8.0), "gpt-4.1-mini": (0.4, 1.6), "gpt-4o": (2.5, 10.0), "gpt-4o-mini": (0.15, 0.6),
     "claude-sonnet-5-5": (3.0, 15.0), "claude-opus-5-5": (5.0, 25.0), "claude-haiku-5-5": (1.0, 5.0),
     "gemini-3.8-flash": (0.3, 2.5), "gemini-2.5-flash": (0.3, 2.5), "deepseek-chat": (0.27, 1.1), "deepseek-v3.4": (0.27, 1.1),
 }
 
 
 def price_for(model: str, tokens_in: int, tokens_out: int) -> float:
-    for k, (pi, po) in PRICES.items():
+    for k, (pi, po) in sorted(PRICES.items(), key=lambda kv: -len(kv[0])):  # longest prefix wins: gpt-5.4-mini before gpt-5
         if model.startswith(k):
             return tokens_in / 1e6 * pi + tokens_out / 1e6 * po
     return 0.0
