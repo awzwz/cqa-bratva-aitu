@@ -3,11 +3,10 @@ kind: ConfigMap
 metadata:
   name: cqa-config
 data:
-  CQA_DATABASE_URL: postgresql+psycopg://cqa:cqa@postgres:5432/cqa
   CQA_REDIS_URL: redis://redis:6379/0
   CQA_PROVIDER_CHAIN: openai,anthropic,gemini,rules
   CQA_OPENAI_MODEL: gpt-5.5
   CQA_LLM_PARALLEL: "4"
-  CQA_LLM_BUDGET_USD: "20"
+  CQA_LLM_BUDGET_USD: "1.5"
   CQA_MASK_PII: "true"
   CQA_TEAM_NAME: Bratva Aitu

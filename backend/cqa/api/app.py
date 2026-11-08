@@ -341,9 +341,20 @@ def job_create(body: dict = Body(...)):
         job = db.Job(kind="evaluate", group_id=gid, checklist_version_id=cl.id, status="queued", total=total, conversation_ids=ids,
                      options={"only_unevaluated": bool(body.get("only_unevaluated")), "second_opinion": bool(body.get("second_opinion")), "parallel_dialogs": int(body.get("parallel_dialogs", 2))})
         s.add(job); s.commit(); jid = job.id
-    if settings.service in ("all", "api") and not settings.redis_url:
-        threading.Thread(target=run_job, args=(jid,), daemon=True).start()
+    enqueue_job(jid)
     return job_dict_by_id(jid)
+
+
+def enqueue_job(jid: int) -> None:
+    """Redis configured -> XADD to the stream the workers consume; otherwise run inside this process."""
+    if settings.redis_url:
+        try:
+            import redis
+            redis.Redis.from_url(settings.redis_url).xadd("cqa:jobs", {"job_id": jid})
+            return
+        except Exception:  # noqa: BLE001 - queue down: degrade to in-process execution instead of losing the job
+            log.exception("redis enqueue failed, running job %s in-process", jid)
+    threading.Thread(target=run_job, args=(jid,), daemon=True).start()
 
 
 def job_dict(j: db.Job) -> dict:

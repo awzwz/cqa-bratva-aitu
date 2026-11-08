@@ -1,0 +1,8 @@
+.git
+.env
+**/.venv
+data
+**/__pycache__
+**/*.egg-info
+.pytest_cache
+deploy/k8s/secret.yaml
