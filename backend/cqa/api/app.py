@@ -107,7 +107,7 @@ def datasets_fetch(body: dict = Body(...)):
 def datasets():
     with db.session() as s:
         rows = s.execute(select(db.Dialog.group_id, func.count(db.Dialog.id)).group_by(db.Dialog.group_id)).all()
-        evs = dict(s.execute(select(db.Evaluation.group_id, func.count(db.Evaluation.id)).where(db.Evaluation.is_latest.is_(True), db.Evaluation.status == "ok").group_by(db.Evaluation.group_id)).all())
+        evs = dict(s.execute(select(db.Evaluation.group_id, func.count(db.Evaluation.id)).where(db.Evaluation.is_latest.is_(True), db.Evaluation.status == "ok", db.Evaluation.checklist_version_id == db.active_checklist(s).id).group_by(db.Evaluation.group_id)).all())
         last = {d.group_id: d.fetched_at.isoformat() for d in s.scalars(select(db.Dataset).order_by(db.Dataset.fetched_at))}
     return [{"group_id": g, "dialogs": n, "evaluated": evs.get(g, 0), "fetched_at": last.get(g)} for g, n in rows]
 
@@ -133,7 +133,7 @@ def _final_score(cl_def: dict, ev: db.Evaluation, overrides: dict) -> dict | Non
 def conversations(group_id: str = Query("DEV"), language: str | None = None, channel: str | None = None, critical: bool | None = None, q: str | None = None):
     with db.session() as s:
         dialogs = list(s.scalars(select(db.Dialog).where(db.Dialog.group_id == group_id).order_by(db.Dialog.api_order)))
-        evs = {e.conversation_id: e for e in db.latest_evaluations(s, group_id)}
+        evs = {e.conversation_id: e for e in db.latest_evaluations(s, group_id, db.active_checklist(s).id)}
         appeals = {}
         for a in s.scalars(select(db.Appeal).where(db.Appeal.conversation_id.in_([d.conversation_id for d in dialogs]))):
             appeals.setdefault(a.conversation_id, []).append({"id": a.id, "status": a.status, "criterion_id": a.criterion_id})
@@ -180,7 +180,9 @@ def conversation(cid: str, group_id: str | None = None):
             err(404, "dialog not found")
         rec = db.dialog_record(d)
         turns = normalize(rec)
-        e = s.scalars(select(db.Evaluation).where(db.Evaluation.dialog_id == d.id, db.Evaluation.is_latest.is_(True)).order_by(db.Evaluation.id.desc())).first()
+        active_id = db.active_checklist(s).id  # show the evaluation by the active checklist version first
+        e = s.scalars(select(db.Evaluation).where(db.Evaluation.dialog_id == d.id, db.Evaluation.is_latest.is_(True))
+                      .order_by((db.Evaluation.checklist_version_id == active_id).desc(), db.Evaluation.id.desc())).first()
         evaluation = None
         history = [{"id": x.id, "status": x.status, "final_score": (x.score or {}).get("final_score"), "checklist_version_id": x.checklist_version_id, "created_at": x.created_at.isoformat(), "is_latest": x.is_latest}
                    for x in s.scalars(select(db.Evaluation).where(db.Evaluation.dialog_id == d.id).order_by(db.Evaluation.id.desc()))]
@@ -504,7 +506,7 @@ def export_preview(group_id: str = "DEV"):
 @app.get("/api/stats")
 def stats(group_id: str = "DEV"):
     with db.session() as s:
-        evs = [e for e in db.latest_evaluations(s, group_id) if e.status == "ok" and e.score]
+        evs = [e for e in db.latest_evaluations(s, group_id, db.active_checklist(s).id) if e.status == "ok" and e.score]
         dialogs = {d.conversation_id: d for d in s.scalars(select(db.Dialog).where(db.Dialog.group_id == group_id))}
         scores = [e.score["final_score"] for e in evs if e.score.get("final_score") is not None]
         cl = db.active_checklist(s); defs = checklist_defs({"criteria": cl.definition["criteria"]})
