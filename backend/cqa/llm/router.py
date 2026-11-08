@@ -98,7 +98,9 @@ class OpenAICompatProvider(Provider):
         if not self.model.startswith(("gpt-5", "o1", "o3", "o4")):
             kwargs["temperature"] = 0
         if self.model.startswith(("gpt-5", "o1", "o3", "o4")):
-            kwargs["max_completion_tokens"] = max_tokens
+            kwargs["max_completion_tokens"] = max_tokens * 4  # reasoning tokens count against the limit
+            if self.id == "openai":
+                kwargs["reasoning_effort"] = settings.openai_reasoning_effort
         else:
             kwargs["max_tokens"] = max_tokens
         if self._schema_ok:

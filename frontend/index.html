@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CQA — контроль качества диалогов · Freedom Broker</title>
+<link rel="stylesheet" href="styles.css?v=1">
+<script>
+  // Host configuration: inside Dynamics 365 the web resource sets apiBase to the deployed CQA service.
+  window.CQA_CONFIG = Object.assign({ apiBase: "" }, window.CQA_CONFIG || {});
+</script>
+</head>
+<body>
+<div id="root"></div>
+<div id="toast" class="toast" hidden></div>
+<script src="logo.js?v=1"></script>
+<script src="app.js?v=1"></script>
+</body>
+</html>

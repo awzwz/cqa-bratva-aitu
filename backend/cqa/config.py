@@ -28,7 +28,8 @@ class Settings(BaseSettings):
     # LLM providers — chain order is the fallback order
     provider_chain: str = Field("openai", description="comma-separated: openai,anthropic,gemini,deepseek,ollama,lmstudio")
     openai_api_key: str | None = None
-    openai_model: str = "gpt-5.5"
+    openai_model: str = "gpt-5.4"
+    openai_reasoning_effort: str = Field("low", description="minimal | low | medium | high for gpt-5.x")
     openai_base_url: str | None = None
     anthropic_api_key: str | None = None
     anthropic_model: str = "claude-sonnet-5-5"
