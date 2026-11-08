@@ -11,3 +11,4 @@ node_modules/
 .DS_Store
 data/*.log
 data/*.json
+*.egg-info/
