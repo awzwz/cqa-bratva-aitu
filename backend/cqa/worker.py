@@ -18,6 +18,8 @@ log = logging.getLogger("cqa.worker")
 def main() -> None:
     logging.basicConfig(level=settings.log_level, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     log.info("worker started (queue=%s)", "redis" if settings.redis_url else "db-poll")
+    from prometheus_client import start_http_server
+    start_http_server(9100)  # evaluations run here, so their counters/histograms are exported from the worker
     if settings.redis_url:
         import socket
 

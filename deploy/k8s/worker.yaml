@@ -8,7 +8,9 @@ spec:
   replicas: 2
   selector: { matchLabels: { app: worker } }
   template:
-    metadata: { labels: { app: worker } }
+    metadata:
+      labels: { app: worker }
+      annotations: { prometheus.io/scrape: "true", prometheus.io/port: "9100", prometheus.io/path: /metrics }
     spec:
       terminationGracePeriodSeconds: 120
       containers:
@@ -16,6 +18,7 @@ spec:
           image: cqa
           env: [{ name: CQA_SERVICE, value: worker }]
           envFrom: [{ configMapRef: { name: cqa-config } }, { secretRef: { name: cqa-secrets } }]
+          ports: [{ name: metrics, containerPort: 9100 }]
           resources: { requests: { cpu: 100m, memory: 256Mi }, limits: { memory: 768Mi } }
 ---
 apiVersion: autoscaling/v2
