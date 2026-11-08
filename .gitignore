@@ -1,0 +1,11 @@
+.env
+*.db
+*.db-*
+data/snapshots/
+data/cqa.db*
+backend/.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+node_modules/
+.DS_Store
